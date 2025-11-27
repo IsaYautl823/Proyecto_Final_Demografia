@@ -1,0 +1,854 @@
+---
+title: "Informe de San Luis Potosí"
+author:
+  - 'Isa Yautl Cortes Lima'
+  - 'Natalia Cruz Noriega'
+format: 
+  pdf:
+    toc: true
+    lang: es-Es
+    fig-pos: '!hbp'
+editor: visual
+---
+
+# Comportamiento de la mortalidad.
+
+En el estado de San Luis Potosí las principales causas que originan los decesos en el periodo de 2010 a 2021 son las defunciones provocadas por homicidio, suicidio, tumores malignos de próstata registrados en hombres y tumores malignos de mama en registros de mujeres. Sin embargo, las causas registradas con mayores decesos en esta entidad son la diabetes mellitus y las enfermedades del corazón, luego le siguen las muertes con violencia, es decir, por homicidios.
+
+En el año de 2010 hubo 366 muertes por homicidio para 2019 esa cantidad incremento a 522 y en 2019 se vio un aumento a 797 decesos. En el caso de diabetes mellitus, se registraron 1,664 fallecimientos en 2010, para el año de 2019 la cifra aumento a 2,216 y en 2021 hubo 3,165 decesos. La cantidad de fallecimientos relacionados con las otras causas son menores comparadas con homicidios y diabetes mellitus.
+
+# Diagrama de flujo.
+El proceso de elaboración de este trabajo esta representado en el diagrama de flujo anteriormente mostrado.
+
+
+
+# Obtención y Limpieza de Datos.
+
+![Proceso de construcción de las tablas de vida]("C:/Users/DELL/Documents/Demografia 2026-1/Proyecto_San_Luis_Postosi_2026_1/images/Diagramadeflujo.png")
+
+## Obtención
+
+Para efectos del siguiente trabajo los datos utilizados se obtuvieron a traves la pagina oficial del el Instituto Nacional de Estadística y Geografía (INEGI),los cuales se pueden encontrar en el siguiente link:[INEGI](https://www.inegi.org.mx/).
+
+A continuación se muestran los datos utilizados con su respectivo link:
+
+**Datos Poblacionales** 
+
+Fuente Principal: INEGI-- Censos de Población y Vivienda 
+
+Link: [Censo 2010](https://www.inegi.org.mx/programas/ccpv/2010/#tabulados),[Censo 2020](https://www.inegi.org.mx/programas/ccpv/2020/#tabulados) 
+
+**Datos de defunciones** 
+
+Fuente Principal: INEGI-- Estadísticas de Defunciones Registradas 
+
+Período: 1990--2024 
+
+Link: [Defunciones](https://www.inegi.org.mx/sistemas/olap/proyectos/bd/continuas/mortalidad/mortalidadgeneral.asp?s=est&c=11144&proy=mortgral_mg),
+[Defunciones por Homicidio](https://www.inegi.org.mx/sistemas/olap/proyectos/bd/continuas/mortalidad/defuncioneshom.asp?s=est&c=28820&proy=mortgral_dh)
+
+Para el caso de los censos se obtuvieron por edad y sexo del estado en cuestión, mientras que para las defunciones se obtuvieron por edad, sexo, año de registro y año de defunción
+
+## Limpieza
+Una vez obtenidos los datos de los censos se efectuó una limpieza de datos para asegurar que la base contenga solo los datos numéricos necesarios. 
+
+Para el caso de las defunciones se realizó un Proceso de prorrateo para los valores perdidos o no especificados (*missing*). A continuación se ilustra los pasos empleados en el prorrrateo de las defunciones.
+
+**Proceso de Prorrateo para las defunciones **
+ 
+  1.- Limpieza y Estandarización de Edades:
+  En esta parte se extrangeron aquellos datos que no son necesarios para el analísis. Tambien se estandarizaron los grupos de edad, en este caso setomo la edad 0 como simple y se contruyeron grupos de edad de 5 años  para las siguentes edades. 
+  
+  
+  2.- Prorrateo por Sexo
+  Para los valores Perdidos por sexo se efectuó un promedio ponderando. La formula es la siguiente:
+  
+  
+   $$p_{\text{masculina total}}=P_{\text{masculina original}}+\omega_m (p_\text{no especificado})$$
+  $$ p_{\text{femenina total}}=P_{\text{femenina original}}+\omega_f (p_\text{no especificado})$$
+
+   donde
+ $$\omega_m= \frac{P_{\text{masculina original}}}{P_{\text{masculina original}}+P_{\text{femenina original}}} $$
+ $$\omega_f= \frac{P_{\text{femenina original}}}{P_{\text{masculina original}}+P_{\text{femenina original}}} $$
+
+  
+  3.- Prorrateo por Edad
+  de la misma forma para el prorrateo de los valores perdidos de la edad se efectuó la siguiente formula: 
+  
+  $$ p_{x\text{ total}}=P_{x\text{ original}}+\omega_x (p_x\text{ no especificado}) $$
+   donde: $$\omega_x = \frac{P_{x\text{ original}}}{\sum_{x=0}^{n}{P_{x\text{ original}}}} $$
+ 
+ 
+  4.- Obtencion y Guardado de una base de datos ya procesada.
+  
+  Una vez completado el prorrateo se obtuvieron las bases de datos necesarias para las siginetes etapas del proyecto estas son **censos_pro_sl.csv ** y **def_pro_sl.csv **.
+  
+  
+# Años Persona Vividos
+
+A continuacón se describen las formulas para el calculo de los años persona vividos que se aplicó en los datos previamente obtenidos del Estado de San Luis Potosí para los
+ años 2010, 2019 y 2021, permitiendo el análisis de la mortalidad durante un período.
+ 
+ **Fórmulas para el Cálculo de Años Persona Vividos**
+ 
+ 1. Crecimiento Exponencial Poblacional
+  
+ $$ N(t)=N_{0} \cdot e^{r\cdot h} $$
+ 
+ 2. Tasa de Crecimiento Intrínseco
+
+
+$$ r =\frac{In\frac{N_X}{N_0}}{\Delta t}$$
+
+## Implementacíon en R
+
+
+```{r}
+# Crecimiento exponencial
+expo <- function(N_0, N_T, t_0, t_T, t){
+  
+  dt <- decimal_date(as.Date(t_T)) - decimal_date(as.Date(t_0))
+  r <- log(N_T/N_0)/dt
+  
+  h <- t - decimal_date(as.Date(t_0))
+  N_h <- N_0 * exp(r*h)  
+  
+  return(N_h)
+  
+}
+```
+
+## Calculo de los apv para 2010,2019,2021
+
+```{r,message=FALSE,warning=FALSE}
+# Preambulo ----
+
+## Limpieza de gráficas ----
+
+graphics.off()
+
+## Limpieza de memoria ----
+
+rm(list = ls())
+
+## Carga de paquetes y Funciones ----
+setwd("C:/Users/DELL/Documents/Demografia 2026-1/Proyecto_San_Luis_Postosi_2026_1")
+source("scripts/functions.R")
+library(readxl)
+library(reshape2)
+library(lubridate)
+library(ggplot2)
+library(data.table)
+library(dplyr)
+
+# Carga de tablas de datos ----
+
+censos_pro <- fread("data/censos_pro_sl.csv")
+
+# Cálculo de años persona vividos (población a mitad de año)
+N <- expo(censos_pro[year==2010] %>% .$pop, 
+          censos_pro[year==2020] %>% .$pop, 
+          t_0 = "2010-06-25", t_T = "2020-03-15", t = 2010.5)
+
+apv2010 <- censos_pro[year==2010, .(age, sex, N)]
+apv2010[,year := 2010]
+
+# Calculo de APV 2020 ----
+
+# Cálculo de años persona vividos (población a mitad de año)
+N <- expo(censos_pro[year==2010] %>% .$pop, 
+          censos_pro[year==2020] %>% .$pop, 
+          t_0 = "2010-06-25", t_T = "2020-03-15", t = 2019.5)
+
+apv2020 <- censos_pro[year==2020, .(age, sex, N)]
+apv2020[, year := 2019]
+# Calculo de APV 2021----
+
+# Cálculo de años persona vividos (población a mitad de año)
+N <- expo(censos_pro[year==2010] %>% .$pop, 
+          censos_pro[year==2020] %>% .$pop, 
+          t_0 = "2010-06-25", t_T = "2020-03-15", t = 2021.5)
+
+apv2021 <- censos_pro[year==2020, .(age, sex, N)]
+apv2021[, year := 2021]
+
+```
+
+### Gráficas.
+```{r}
+#| echo: false
+#| message: false
+#| warning: false
+#| layout: [[60,-10, 60], [50]]
+#| fig-cap: "Piramides Poblacionales de San Luis Potosí"
+#| fig-subcap: 
+#|   - "2010"
+#|   - "2020"
+#|   - "2021"
+## Gráfica de la pirámide poblacional 2010
+
+a <-apv2010[age<5]
+a[,N:= sum(N),sex]
+datospiramides <- rbind(a,apv2010[age>= 5]) 
+datospiramides <- datospiramides[age != 1,]
+ 
+
+ggplot(datospiramides, aes(x = factor(age), y = ifelse(sex == "male", -N/1e6, N/1e6), fill = sex)) +
+  geom_col(width = 0.7, alpha = 0.8) +
+  coord_flip() +
+  scale_y_continuous(
+    labels = function(x) paste0(abs(x), "M"),
+    breaks = scales::pretty_breaks(n = 8)
+  ) +
+  scale_fill_manual(
+    values = c("male" = "#1f77b4", "female" = "#FB64B6"),
+    labels = c("male" = "Hombres", "female" = "Mujeres")
+  ) +
+  labs(
+    title = "Pirámide Poblacional 2010",
+    subtitle = "Distribución por edad y sexo",
+    x = "Grupo de edad",
+    y = "Población mitad de año (millones)",
+    fill = "Sexo:",
+    caption = "Fuente: INEGI"
+  ) +
+  theme_minimal() +
+  theme(
+    legend.position = "bottom",
+    plot.title = element_text(hjust = 0.5, face = "bold", size = 14),
+    plot.subtitle = element_text(hjust = 0.5, color = "gray40"),
+    axis.text.y = element_text(size = 8),
+    panel.grid.major.y = element_blank()
+  )
+
+## Grafica de la piramide poblacional 2019
+
+a <-apv2020[age<5]
+a[,N:= sum(N),sex]
+datospiramides <- rbind(a,apv2020[age>= 5]) 
+datospiramides <- datospiramides[age != 1,]
+
+ggplot(datospiramides, aes(x = factor(age), y = ifelse(sex == "male", -N/1e6, N/1e6), fill = sex)) +
+  geom_col(width = 0.7, alpha = 0.8) +
+  coord_flip() +
+  scale_y_continuous(
+    labels = function(x) paste0(abs(x), "M"),
+    breaks = scales::pretty_breaks(n = 8)
+  ) +
+  scale_fill_manual(
+    values = c("male" = "#1f77b4", "female" = "#FB64B6"),
+    labels = c("male" = "Hombres", "female" = "Mujeres")
+  ) +
+  labs(
+    title = "Pirámide Poblacional 2019",
+    subtitle = "Distribución por edad y sexo",
+    x = "Grupo de edad",
+    y = "Población mitad de año (millones)",
+    fill = "Sexo",
+    caption = "Fuente: INEGI"
+  ) +
+  theme_minimal() +
+  theme(
+    legend.position = "bottom",
+    plot.title = element_text(hjust = 0.5, face = "bold", size = 14),
+    plot.subtitle = element_text(hjust = 0.5, color = "gray40"),
+    axis.text.y = element_text(size = 8),
+    panel.grid.major.y = element_blank()
+    
+  )
+
+
+## Grafica de la piramide poblacional 2021
+a <-apv2021[age<5]
+a[,N:= sum(N),sex]
+datospiramides <- rbind(a,apv2021[age>= 5]) 
+datospiramides <- datospiramides[age != 1,]
+
+ggplot(datospiramides, aes(x = factor(age), y = ifelse(sex == "male", -N/1e6, N/1e6), fill = sex)) +
+  geom_col(width = 0.7, alpha = 0.8) +
+  coord_flip() +
+  scale_y_continuous(
+    labels = function(x) paste0(abs(x), "M"),
+    breaks = scales::pretty_breaks(n = 8)
+  ) +
+  scale_fill_manual(
+    values = c("male" = "#1f77b4", "female" = "#FB64B6"),
+    labels = c("male" = "Hombres", "female" = "Mujeres")
+  ) +
+  labs(
+    title = "Pirámide Poblacional 2021",
+    subtitle = "Distribución por edad y sexo",
+    x = "Grupo de edad",
+    y = "Población mitad de año (millones)",
+    fill = "Sexo",
+    caption = "Fuente: INEGI"
+  ) +
+  theme_minimal() +
+  theme(
+    legend.position = "bottom",
+    plot.title = element_text(hjust = 0.5, face = "bold", size = 14),
+    plot.subtitle = element_text(hjust = 0.5, color = "gray40"),
+    axis.text.y = element_text(size = 8),
+    panel.grid.major.y = element_blank()
+    
+  )
+```
+# Defunciones
+```{r}
+#| message: false
+#| warning: false   
+setwd("C:/Users/DELL/Documents/Demografia 2026-1/Proyecto_San_Luis_Postosi_2026_1")
+source("scripts/functions.R")
+library(readxl)
+library(reshape2)
+library(lubridate)
+library(ggplot2)
+library(data.table)
+library(dplyr)
+library(knitr)
+
+# Carga de tablas de datos ----
+def_pro <- fread("data/def_pro_sl.csv") %>% 
+  .[year %in% c(2009, 2010, 2011, 2018, 2019,2020,2021,2022)]
+
+
+## calculo del promedio para el año de referencia
+def_pro[ , year_new := ifelse( year %in% 2009:2011,2010,
+                               ifelse( year %in% 2018:2019,2019,
+                                     ifelse( year %in% 2020:2021,
+                                       2021,
+                                        year )))]
+
+# datos preparados de defunciones
+def <- 
+  def_pro[ , 
+           .( deaths = mean( deaths ) ),
+           .( year = year_new, sex, age ) ] 
+
+```
+
+## Gráficas
+```{r}
+#| message: false
+#| warning: false
+#| echo: false
+#| fig-cap: "Evolución de defunciones de San Luis Potosí"
+
+
+setwd("C:/Users/DELL/Documents/Demografia 2026-1/Proyecto_San_Luis_Postosi_2026_1")
+def_pro <- fread("data/def_pro_sl.csv")  
+def_gr <- def_pro[ , .(deaths=sum(deaths)), .(year, sex)]
+
+ggplot(def_gr, aes(x = year, y = deaths, color = sex, group = sex)) +
+  geom_line(size = 1.2) +
+  geom_point(size = 2) +
+  labs(title = "Evolución de Defunciones por Sexo (1990-2024)",
+       x = "Año",
+       y = "Número de Defunciones",
+       color = "Sexo") +
+  scale_color_manual(values = c("male" = "blue", "female" = "red")) +
+  theme_minimal() +
+  theme(legend.position = "bottom")
+
+```
+
+```{r}
+#| message: false
+#| warning: false
+#| echo: false
+#| fig-cap: "Evolución de defunciones de San Luis Potosí"
+
+def_edad <- def_pro[year %in% 2010:2021, .(deaths = mean(deaths)), .(age, sex)]
+
+ggplot(def_edad, aes(x = age, y = deaths, fill = sex)) +
+  geom_col(position = "dodge") +
+  labs(title = "Defunciones Promedio por Edad y Sexo (2010-2021)",
+       x = "Edad",
+       y = "Defunciones Promedio",
+       fill = "Sexo") +
+  scale_fill_manual(values = c("male" = "blue", "female" = "red")) +
+  theme_minimal()
+
+```
+
+# Tablas de vida
+
+**Formulas Pricipales para la tabla de vida**
+
+ 1.- Probabilidad de muerte ($q_x$)
+ 
+ $$ q_x = \frac{n_x\cdot m_x}{1+ (n_x-a_x)\cdot m_x} $$
+ 2.- Probablilidad de supervivencia ($p_x$)
+ $$p_x=1- q_x$$
+ 
+ 3.- Sobrevivientes($l_x$)
+ $$ l_0 =100000$$
+ $$ l_{x+n} = l_x(_np_x) $$
+4.- Defunciones
+
+$$ _nd_x=l_x(_nq_x) \qquad\text{ o equivalente} \qquad _nd_x=l_x -l_{x+n}$$
+5.- Años persona vividos ($_nL_x$)
+$$ _nL_x =( n \cdot l_{x+n}) + (_na_x\cdot _nd_x) $$
+6.- Número total de años Persona vividos ($T_x$)
+$$T_x = \sum_{a=x}^{\omega}{_nL_a}  $$
+7.- Esperanza de vida($e_x$)
+$$ e_x^0= \frac{T_x}{l_x}$$
+
+## Funcion en R
+
+```{r}
+
+lt_abr <- function(x, mx, sex="f", IMR=NA){
+  
+  m <- length(x)
+  n <- c(diff(x), NA)  
+  
+  ax <- n/2    
+  
+  # Pag. 4 notas de clase - cuadro
+  
+  ## Coale y Demeny edades 0 a 1
+  
+  if(sex=="m"){
+    if(mx[1]>=0.107){ ax[1] <- 0.330 }else{
+      ax[1] <- 0.045+2.684*mx[1]
+    } 
+  } else if(sex=="f"){
+    if(mx[1]>=0.107){ ax[1] <- 0.350 }else{
+      ax[1] <- 0.053+2.800*mx[1]
+    }  
+  }
+  
+  ## Coale y Demeny edades 1 a 4
+  if(sex=="m"){
+    if(mx[1]>=0.107){ ax[2] <- 1.352 }else{
+      ax[2] <- 1.651-2.816*mx[1]
+    } 
+  } else if(sex=="f"){
+    if(mx[1]>=0.107){ ax[2] <- 1.361 }else{
+      ax[2] <- 1.522-1.518*mx[1]
+    }  
+  }
+  
+  # Probabilidad de muerte
+  qx <- (n*mx)/(1+(n-ax)*mx)
+  qx[m] <- 1
+  
+  # Proba de sobrevivir
+  px <- 1-qx
+  
+  # l_x
+  lx <- 100000 * cumprod(c(1,px[-m]))
+  
+  # Defunciones
+  dx <- c(-diff(lx), lx[m])
+  
+  # Años persona vividos
+  Lx <- n* c(lx[-1], 0) + ax*dx
+  Lx[m] <- lx[m]/mx[m]
+  
+  # Años persona vividos acumulados
+  
+  Tx <- rev(cumsum(rev(Lx)))
+  
+  # Esperanza de vida
+  ex <- Tx/lx
+  
+  return(data.table(x, n, mx, ax, qx, px, lx, dx, Lx, Tx, ex))
+  
+  
+}
+
+```
+
+
+
+```{r}
+#| warning: false
+#| message: false
+
+# Carga de tablas de datos ----
+setwd("C:/Users/DELL/Documents/Demografia 2026-1/Proyecto_San_Luis_Postosi_2026_1")
+def <- fread("data/def_sl.csv")
+apv <- fread("data/apv_sl.csv") 
+
+# Unión de tablas de Años Persona Vividos y Defunciones ----
+lt_input <- setDT(left_join(apv, def, by = c("year", "sex", "age")))
+
+# Cálculo de mx ----
+lt_input[ , mx := deaths/N]
+lt_input[ , sex := if_else(sex=="male", "m", "f")]
+# Tablas de mortalidad nacional - eevv + censales 2010, 2019 ----
+
+lt_output <- data.table()
+
+for( s in c( 'm', 'f' ) ){
+  for( y in unique( lt_input$year ) ){
+    
+    temp_dt <- lt_input[ sex == s & year == y ]
+    
+    temp_lt <-
+      lt_abr(x = temp_dt$age, 
+             mx = temp_dt$mx, 
+             sex = s) %>%
+      setDT %>%
+      .[ , year := y ] %>%
+      .[ , sex := s ]
+    
+    lt_output <- 
+      rbind(
+        lt_output,
+        temp_lt[ , .(
+                      year = y, 
+                      sex,
+                      age = x, 
+                      mx = round( mx, 6 ), 
+                      qx = round( qx, 6 ),
+                      ax = round( ax, 2 ), 
+                      lx = round( lx, 0 ), 
+                      dx = round( dx, 0 ), 
+                      Lx = round( Lx, 0 ), 
+                      Tx = round( Tx, 0 ), 
+                      ex = round( ex, 2 )) ]
+      )
+    
+  }
+  
+}
+```
+
+
+## Resultados de la tabla de vida
+
+```{r}
+#| echo: false
+#| tbl-cap: 'Tabla de vida de San Luis Potosí (2010)'
+lt_output[year==2010,.(age,sex,mx,qx,ax,lx,dx,Lx,Tx,ex)] %>% kable()
+```
+```{r}
+#| tbl-cap: 'Tabla de vida de San Luis Potosí (2019)'
+#| echo: false  
+lt_output[year==2019,.(age,sex,mx,qx,ax,lx,dx,Lx,Tx,ex)] %>% kable()
+```
+
+```{r}
+#| echo: false
+#| tbl-cap: 'Tabla de vida de San Luis Potosí (2021)'
+lt_output[year==2021,.(age,sex,mx,qx,ax,lx,dx,Lx,Tx,ex)] %>% kable()
+```
+
+
+
+```{r}
+#| echo: false
+#| tbl-cap: "Esperanzas de vida al nacer "
+lt_output[ age == 0 ] %>% dcast( year ~ sex, value.var = 'ex' ) %>% kable()
+```
+
+## Gráficas
+
+
+```{r}
+#| echo: false
+#| warning: false
+#| message: false
+#| layout: "[40,-10,40]"
+
+## Gráfica - mx por año y sexo ----
+ggplot(lt_input, aes(x = age, y = log(mx), color = sex, group = sex)) +
+  geom_line(linewidth = 1) +
+  geom_point(size = 1.5) +
+  facet_wrap(~ year, ncol = 2) +
+  scale_color_manual(
+    values = c("m" = "steelblue", "f" = "lightcoral"),
+    labels = c("m" = "Hombres", "f" = "Mujeres")
+  ) +
+  labs(
+    title = "Tasa de mortalidad de San Luis Postosi por año y sexo",
+    x = "Edad",
+    y = "log(mx)",
+    color = "Sexo"
+  ) +
+  theme_minimal() 
+## Gráfica - ex por año y sexo ----
+ggplot(lt_output, aes(x = age, y = ex, color = sex, group = sex)) +
+  geom_line(linewidth = 1) +
+  geom_point(size = 1.5) +
+  facet_wrap(~ year, ncol = 2) +
+  scale_color_manual(
+    values = c("m" = "steelblue", "f" = "lightcoral"),
+    labels = c("m" = "Hombres", "f" = "Mujeres")
+  ) +
+  labs(
+    title = "Esperanza de vidad de San Luis Postosi por año y sexo",
+    x = "Edad",
+    y = "ex",
+    color = "Sexo"
+  ) + theme_minimal() 
+
+
+
+```
+
+```{r}
+#| echo: false
+#| warning: false
+#| message: false
+#| layout: "[[40,-20,40], [40]]"
+
+
+
+## Gráfica - lx por año y sexo ----
+ggplot(lt_output, aes(x = age, y = log(lx), color = sex, group = sex)) +
+  geom_line(linewidth = 1) +
+  geom_point(size = 1.5) +
+  facet_wrap(~ year, ncol = 2) +
+  scale_color_manual(
+    values = c("m" = "steelblue", "f" = "lightcoral"),
+    labels = c("m" = "Hombres", "f" = "Mujeres")
+  ) +
+  labs(
+    title = "lx de San Luis Postosi por año y sexo",
+    x = "Edad",
+    y = "log(lx)",
+    color = "Sexo"
+  ) +
+  theme_minimal() 
+
+## Gráfica - Qx por año y sexo ----
+ggplot(lt_output, aes(x = age, y = log(qx), color = sex, group = sex)) +
+  geom_line(linewidth = 1) +
+  geom_point(size = 1.5) +
+  facet_wrap(~ year, ncol = 2) +
+  scale_color_manual(
+    values = c("m" = "steelblue", "f" = "lightcoral"),
+    labels = c("m" = "Hombres", "f" = "Mujeres")
+  ) +
+  labs(
+    title = " q_x de San Luis Postosi por año y sexo",
+    x = "Edad",
+    y = "log(lx)",
+    color = "Sexo"
+  ) +
+  theme_minimal() 
+
+## Gráfica - mx por sexo y año ----
+ggplot(lt_input, aes(x = age, y = log(mx), color = factor(year), group = year)) +
+  geom_line(linewidth = 1) +
+  geom_point(size = 1.2) +
+  facet_grid(. ~ sex, labeller = as_labeller(c("m" = "Hombres", "f" = "Mujeres"))) +
+  scale_color_manual(
+    values = c("2010" = "steelblue", "2019" = "brown", "2021"="seagreen3"),
+    name = "Año"
+  ) +
+  labs(
+    title = "Evolución de la tasa de mortalidad de San Luis Potosi",
+    #    subtitle = "México",
+    x = "Edad",
+    y = "log(mx)"
+  ) +
+  theme_minimal()
+
+
+
+```
+
+```{r}
+#| message: false
+#| warning: false
+#| echo: false
+ggplot(lt_output, aes(x = age, y = ex, color = factor(year), group = year)) +
+  geom_line(linewidth = 1) +
+  geom_point(size = 1.2) +
+  facet_grid(. ~ sex, labeller = as_labeller(c("m" = "Hombres", "f" = "Mujeres"))) +
+  scale_color_manual(
+    values = c("2010" = "steelblue", "2019" = "brown", "2021"="seagreen3"),
+    name = "Año"
+  ) +
+  labs(
+    title = "Evolución de la esperanza de vida de San Luis Potosi",
+    x = "Edad",
+    y = "ex"
+  ) +
+  theme_minimal()
+
+```
+
+
+# Decomposición Por Método de Arriaga.
+
+Como se obtuvieron tres tablas de mortalidad, se pueden descomponer sus diferencias, y 
+estimar la contribución de los diferentes grupos de edad, en la diferencia observada. 
+
+El método de descomposición de la esperanza de vida al nacer es útil para explicar los cambios  de la población de San Luis Potosí en el tiempo.
+
+A continución se exponen las formulas utilizadas para el calculo de dicho método.
+
+ 1.Contribución por edad x a la diferencia en esperanza de vida
+ $$ _n\Delta_x = \frac{l_x^1}{l_0^1}\cdot (\frac{_nL_x^2}{l_x^2}-\frac{_nL_x^1}{l_x^2}) + \frac{T_{x+n}^2}{l_0^1}\cdot (\frac{l_x^1}{l_x^2}-\frac{l_{x+n}^1}{l_{x+n}^2})$$
+ 2. Para el ultimo  grupo de edad.
+ 
+ $$_\infty\Delta_x = \frac{l_x^1}{l_0^1}\cdot (\frac{T_x^2}{l_x^2}-\frac{T_x^1}{l_x^1}) $$
+
+
+## Función en R
+```{r}
+#3 Descomposición por edad de la diferencia de la e_0 entre períodos----
+
+desc <- function(lx1, Lx1, lx2, Lx2, age) {
+  Tx1 <- rev(cumsum(rev(Lx1)))
+  Tx2 <- rev(cumsum(rev(Lx2)))
+  ex1 <- Tx1/lx1
+  ex2 <- Tx2/lx2
+  
+  # Verificar que los vectores tengan la misma longitud
+  if(length(lx1) != length(lx2) | length(Lx1) != length(Lx2)) {
+    stop("Los vectores de entrada deben tener la misma longitud")
+  }
+  
+  n <- length(lx1)
+  dif <- numeric(n)
+  
+  # contribuciones por edad
+  for (i in 1:(n-1) ) {
+    
+    # primer sumando
+    term1 <- (lx1[i]/lx1[1])*((Lx2[i]/lx2[i]) - (Lx1[i]/lx1[i]))
+    # Segundo sumando
+    term2 <- (Tx2[i+1]/lx1[1])*((lx1[i]/lx2[i])-(lx1[i+1]/lx2[i+1]))
+    dif[i] <- term1 + term2
+  }
+  
+  # ultimo grupo de edad 
+  
+  dif[n] <- (lx1[n]/lx1[1]) * ((Tx2[n]/lx2[n]) - (Tx1[n]/lx1[n]))
+  
+  return(data.table(age,lx1,Lx1,Tx1,ex1,lx2,Lx2,Tx2,ex2,dif))
+}
+```
+
+## implemetación e r
+
+```{r}
+#| message: false
+#| warning: false
+
+
+## Carga de paquetes y funciones----
+setwd("C:/Users/DELL/Documents/Demografia 2026-1/Proyecto_San_Luis_Postosi_2026_1")
+source("scripts/functions.R")
+library(readxl)
+library(reshape2)
+library(lubridate)
+library(ggplot2)
+library(data.table)
+library(dplyr)
+library(knitr)
+
+## Carga de tablas de datos ----
+
+lt <- fread("data/lt_sl.csv")
+
+
+# Preparar datos para la descomposición
+descomposicion_datos <- list()
+
+for(s in c('m', 'f')) {
+  
+  # Obtener datos para cada año
+  lt_2010 <- lt[sex == s & year == 2010]
+  lt_2019 <- lt[sex == s & year == 2019]
+  lt_2021 <- lt[sex == s & year == 2021]
+  
+  
+    
+    # Comparación 2010-2019
+  
+    desc_2010_2019 <- desc(
+      lx1 = lt_2010$lx,
+      Lx1 = lt_2010$Lx,
+      lx2 = lt_2019$lx,
+      Lx2 = lt_2019$Lx,
+      age = lt_2010$age
+     
+    )
+    
+    # Comparación 2019-2021
+    
+    desc_2019_2021 <- desc(
+      lx1 = lt_2019$lx,
+      Lx1 = lt_2019$Lx,
+      lx2 = lt_2021$lx,
+      Lx2 = lt_2021$Lx,
+      age = lt_2021$age
+      )
+      
+    
+    # Guardar resultados
+    descomposicion_datos[[paste0(s, "_2010_2019")]] <- desc_2010_2019
+    descomposicion_datos[[paste0(s, "_2019_2021")]] <- desc_2019_2021
+  
+}
+
+
+# Preparar datos para la gráfica de descomposición
+
+descomp_hombres_2010_2019 <- descomposicion_datos[["m_2010_2019"]]
+descomp_mujeres_2010_2019 <- descomposicion_datos[["f_2010_2019"]]
+descomp_hombres_2019_2021 <- descomposicion_datos[["m_2019_2021"]]
+descomp_mujeres_2019_2021 <- descomposicion_datos[["f_2019_2021"]]
+
+descomp_hombres_2010_2019[,sex:="m"]
+descomp_mujeres_2010_2019[,sex:="f"] 
+descomp_hombres_2019_2021[,sex:="m"] 
+descomp_mujeres_2019_2021[,sex:="f"]
+
+descomp_hombres_2010_2019[,per:="2010-2019"]
+descomp_mujeres_2010_2019[,per:="2010-2019"] 
+descomp_hombres_2019_2021[,per:="2019-2021"] 
+descomp_mujeres_2019_2021[,per:="2019-2021"]
+
+datos_descomp <- rbind(descomp_hombres_2010_2019,
+                       descomp_mujeres_2010_2019,
+                       descomp_hombres_2019_2021, 
+                       descomp_mujeres_2019_2021)
+```
+
+
+## Gráficas
+
+```{r}
+#| echo: false
+#| message: false
+#| warning: false
+#| fig-cap: "Cambios en la esperanza de vida"
+
+ggplot(datos_descomp, aes(age , dif,fill = dif > 0)) + 
+  geom_col(alpha = 0.8, width = 0.7) + 
+  facet_grid(sex ~per,scales = "free_x", space = "free_x") + 
+  scale_fill_manual(
+    values = c("TRUE" = "#2E8B57", "FALSE" = "#CD5C5C"),
+    labels = c("TRUE" = "Ganancia", "FALSE" = "Pérdida"),
+    name = "Efecto"
+  ) +
+  labs(
+    title = "Descomposición de Cambios en Esperanza de Vida\n en San Luis Potosí 2010-2019 y 2019-2021",
+    x = "Grupo de Edad",
+    y = "Contribución (años)",
+    caption = "Fuente: INEGI"
+  ) +
+  theme_minimal()
+
+```
+
+
+
+
+
+
+
+
+
+
+
+
